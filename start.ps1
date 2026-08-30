@@ -47,12 +47,18 @@ $server = $null; $loop = $null
 try {
     Write-Host "═══ 三省六部 · 服务启动中 ═══"
 
-    # ── 数据刷新循环（仅当检测到 OpenClaw CLI）──
+    # ── 数据刷新循环 ──
     if (Get-Command openclaw -ErrorAction SilentlyContinue) {
-        Write-Host "▶ 启动数据刷新循环..."
+        Write-Host "▶ 启动数据刷新循环（OpenClaw 同步模式）..."
         $loop = Start-Process powershell -ArgumentList '-NoProfile','-File',(Join-Path $Root 'scripts\run_loop.ps1') -PassThru
     } else {
-        Write-Host "⚠️  未检测到 OpenClaw CLI，跳过数据刷新循环（看板只读模式，可使用已有数据）"
+        Write-Host "▶ 启动数据刷新循环（通用模式：每 15 秒刷新看板数据）..."
+        $pyExe = $pyArgs[0]
+        $pyExtra = @()
+        if ($pyArgs.Length -gt 1) { $pyExtra = @($pyArgs[1..($pyArgs.Length-1)]) | ForEach-Object { "'$_'" } }
+        $loopCmd = "while (`$true) { & '$pyExe' " + ($pyExtra -join ' ') +
+                   " '$(Join-Path $Root 'scripts\refresh_live_data.py')' 2>`$null; Start-Sleep -Seconds 15 }"
+        $loop = Start-Process powershell -ArgumentList '-NoProfile','-Command',$loopCmd -PassThru
     }
 
     # ── 看板服务器 ──
