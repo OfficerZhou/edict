@@ -22,7 +22,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Harness-Agnostic-8B5CF6?style=flat-square" alt="Any Harness">
   <img src="https://img.shields.io/badge/Python-3.9+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
-  <img src="https://img.shields.io/badge/Agents-12_Specialized-8B5CF6?style=flat-square" alt="Agents">
+  <img src="https://img.shields.io/badge/Skills-8-8B5CF6?style=flat-square" alt="Agents">
   <img src="https://img.shields.io/badge/Dashboard-Real--time-F59E0B?style=flat-square" alt="Dashboard">
   <img src="https://img.shields.io/badge/License-MIT-22C55E?style=flat-square" alt="License">
   <img src="https://img.shields.io/badge/Frontend-React_18-61DAFB?style=flat-square&logo=react&logoColor=white" alt="React">
@@ -296,11 +296,11 @@ edict/
 │   ├── task-dispatch-architecture.md    # 架构文档：任务分发、流转、调度的完整设计
 │   ├── wechat-article.md                # 微信文章
 │   └── screenshots/                     # 功能截图
-├── skills/                     # 通用技能包（harness 无关，核心）
-├── agents/ →（已移除）          # 角色人格已并入 skills/*/references/
-├── start.ps1                   # 一键启动（Windows，Dashboard）
+├── install-skills.sh / .ps1    # 一键安装器（把 skills/ 装进当前平台的技能目录）
+├── start.ps1                   # 一键启动军机处看板（Windows）
 ├── CONTRIBUTING.md             # 贡献指南
 └── LICENSE                     # MIT License
+```
 ```
 
 ---
@@ -330,76 +330,25 @@ edict/
 
 全程可在**军机处看板**实时监控，随时可以**叫停、取消、恢复**。
 
-### 使用圣旨模板
+### 看产物
 
-> 看板 → 📜 旨库 → 选模板 → 填参数 → 下旨
-
-9 个预设模板：周报生成 · 代码审查 · API 设计 · 竞品分析 · 数据报告 · 博客文章 · 部署方案 · 邮件文案 · 站会摘要
-
-### 自定义 Agent
-
-编辑 `agents/<id>/SOUL.md` 即可修改 Agent 的人格、职责和输出规范。
-
-### 增补 Skills（从网上连接）
-
-**三种方式添加 Skills：**
-
-#### 1️⃣ 看板 UI（最简单）
-
+每个旨意的产物统一在 `output/<任务ID>/`（代码/文档/报告，本地产物不入库）：
 ```
-看板 → 🔧 技能配置 → ➕ 添加远程 Skill
-→ 输入 Agent + Skill 名称 + GitHub URL
-→ 确认 → ✅ 完成
+output/JJC-20260830-001/    # 工具 + 使用指南 + 时间戳运行报告
 ```
 
-#### 2️⃣ CLI 命令（最灵活）
+### 干预任务
 
+看板只读，干预走 CLI（含状态机校验与高风险二次确认）：
 ```bash
-# 从 GitHub 添加 mmx_cli skill 到门下省
-python3 scripts/skill_manager.py add-remote \
-  --agent menxia \
-  --name mmx_cli \
-  --source https://raw.githubusercontent.com/MiniMax-AI/cli/main/skill/SKILL.md \
-  --description "MiniMax 多模态 CLI 技能"
-
-# 一键导入默认 skills 到指定 agents
-python3 scripts/skill_manager.py import-official-hub \
-  --agents menxia,shangshu
-
-# 列出所有已添加的远程 skills
-python3 scripts/skill_manager.py list-remote
-
-# 更新某个 skill 到最新版本
-python3 scripts/skill_manager.py update-remote \
-  --agent menxia \
-  --name mmx_cli
+python scripts/kanban_update.py state JJC-xxx Blocked "依赖未就绪"   # 挂起
+python scripts/kanban_update.py state JJC-xxx Cancelled "取消"       # 取消（高风险需确认）
+python scripts/kanban_update.py confirm JJC-xxx approve "确认"       # 高风险转换确认
 ```
 
-#### 3️⃣ API 请求（自动化集成）
+### 角色人格在哪
 
-```bash
-# 添加远程 skill
-curl -X POST http://localhost:7891/api/add-remote-skill \
-  -H "Content-Type: application/json" \
-  -d '{
-    "agentId": "menxia",
-    "skillName": "mmx_cli",
-    "sourceUrl": "https://raw.githubusercontent.com/MiniMax-AI/cli/main/skill/SKILL.md",
-    "description": "MiniMax 多模态 CLI 技能"
-  }'
-
-# 查看所有远程 skills
-curl http://localhost:7891/api/remote-skills-list
-```
-
-**默认可导入 Skill：**
-
-支持的 Skills：
-- `mmx_cli` — MiniMax 多模态 CLI 技能（文本、图像、视频、语音、音乐、搜索）
-
-如果你有自己的 Skills Hub，可以通过 `OPENCLAW_SKILLS_HUB_BASE` 或 `~/.openclaw/skills-hub-url` 配置自定义源。
-
-详见 [🎓 远程 Skills 资源管理指南](docs/remote-skills-guide.md)
+角色完整 prompt 内嵌在对应技能正文；语气/案例等人格增强在 `skills/edict-*/references/` 下（随技能分发）。
 
 ---
 
@@ -418,8 +367,6 @@ curl http://localhost:7891/api/remote-skills-list
 | **通用技能包** | `skills/` 拷到任何 agent 技能目录即可用（无平台/仓库硬依赖） |
 | **看板启动** | `.\start.ps1`（Windows 一键）/ `python board/server.py` |
 | **实时刷新** | 看板每 5 秒自动拉取任务卡（页面内开关可关） |
-| **每日仪式** | 首次打开播放上朝开场动画 |
-| **远程 Skills 生态** | 从 GitHub/URL 一键导入能力，支持版本管理 + CLI + API + UI |
 
 ---
 
@@ -435,81 +382,36 @@ curl http://localhost:7891/api/remote-skills-list
   - 故障场景与恢复机制
   - **读这个文档会理解为什么三省六部这么强大**（9500+ 字，30 分钟完整理解）
 
-- **[🎓 远程 Skills 资源管理指南](docs/remote-skills-guide.md)** — Skills 生态
-  - 从网上连接和增补 skills，支持 GitHub/Gitee/任意 HTTPS URL
-  - 默认 Skills 源和自定义 Hub 支持
-  - CLI 工具 + 看板 UI + Restful API
-  - Skills 文件规范与安全防护
-  - 支持版本管理和一键更新
-
-- **[⚡ Remote Skills 快速入门](docs/remote-skills-quickstart.md)** — 5 分钟上手
-  - 快速体验、CLI 命令、看板操作示例
-  - 创建自己的 Skills 库
-  - API 完整参考 + 常见问题
-
-- **[🚀 快速上手指南](docs/getting-started.md)** — 新手入门
 - **[🤝 贡献指南](CONTRIBUTING.md)** — 想参与贡献？从这里开始
 
 ---
 ## 🔧 常见问题排查
 
 <details>
-<summary><b>❌ 任务总超时 / 下属完成了但无法传回太子</b></summary>
+<summary><b>❌ 命令后看板没变化 / 服务没启动</b></summary>
 
-**症状**：六部或尚书省已完成任务，但太子收不到回报，最终超时。
-
-**排查步骤**：
-
-1. **检查 Agent 注册状态**：
+**排查**：
 ```bash
-curl -s http://127.0.0.1:7891/api/agents-status | python3 -m json.tool
-```
-确认 `taizi` agent 的 `statusLabel` 是 `alive`。
-
-2. **检查 Gateway 日志**：
-```bash
-ls /tmp/openclaw/ | tail -5          # 找到最新日志
-grep -i "error\|fail\|unknown" /tmp/openclaw/openclaw-*.log | tail -20
+python board/server.py            # 直接启动看板（127.0.0.1:7891）
+python scripts/kanban_update.py flow JJC-xxx "太子" "机关" "测试"   # 验证 CLI 可写
 ```
 
-3. **常见原因**：
-   - Agent ID 不匹配（已在 v1.2 修复：`main` → `taizi`）
-   - LLM provider 超时（增加了自动重试）
-   - 僵尸 Agent 进程（运行 `ps aux | grep openclaw` 检查）
-
-4. **强制重试**：
-```bash
-# 手动触发巡检扫描（自动重试卡住的任务）
-curl -X POST http://127.0.0.1:7891/api/scheduler-scan \
-  -H 'Content-Type: application/json' -d '{"thresholdSec":60}'
-```
-
-</details>
+**常见原因**：
+- 看板进程未启动（`\start.ps1` 或 `python board/server.py`）；端口被占（`-Port 8080` 换端口）
+- 任务卡文件损坏：清 `data/tasks_source.json` 为 `[]` 后重来（仅测试环境）
+- 命令字符串含未引号中文 → 加引号
 
 <details>
 > （历史演示镜像 `cft0808/sansheng-demo` 与已移除的 Docker 部署文档仅存于 git 历史，当前版本无 Docker 相关源码）
 
 <details>
-<summary><b>❌ Skill 下载失败</b></summary>
-
-**症状**：`python3 scripts/skill_manager.py import-official-hub` 报错。
+<summary><b>❌ agent 没触发三省六部流程</b></summary>
 
 **排查**：
-```bash
-# 测试网络连通性
-curl -I https://raw.githubusercontent.com/MiniMax-AI/cli/main/skill/SKILL.md
-
-# 如果超时，使用代理
-export https_proxy=http://your-proxy:port
-python3 scripts/skill_manager.py import-official-hub --agents menxia
-```
-
-**常见原因**：
-- 中国大陆访问 GitHub raw 资源需要代理
-- 网络超时（已增加到 30 秒 + 自动重试 3 次）
-- 默认 skill 源无法访问，或自定义 Skills Hub 配置错误
-
-</details>
+1. 确认技能已装：`ls ~/.claude/skills/` 下有 `edict-triaging` 等 8 个目录
+2. 开新会话（技能索引在会话启动时加载）；`/clear` 后再试
+3. 触发句要有动作词+目标（≥10 字）：`「朕要一个 React 待办应用，六部协同办理」`；加前缀「传旨：」强制走流程
+4. 模型偶尔漏触发时，在项目说明文件（AGENTS.md/CLAUDE.md）里加一句"任务消息先用 edict-triaging"兜底
 
 ---
 ## �🗺️ Roadmap
@@ -600,7 +502,7 @@ python3 scripts/skill_manager.py import-official-hub --agents menxia
 
 你会看到：
 
-- 🏛️ **架构拆解** —— 三省六部到底怎么分权制衡的？12 个 Agent 各司何职？
+- 🏛️ **架构拆解** —— 三省六部到底怎么分权制衡的？8 个技能 各司何职？
 - 🔥 **踩坑复盘** —— Agent 吵架了怎么办？Token 烧光了怎么省？门下省为什么总封驳？
 - 🛠️ **Issue 修复实录** —— 每个 bug 都是一道奏折，看朕如何批红
 - 💡 **Token 省钱术** —— 用 1/10 的 token 跑出门下省审核效果的秘密
@@ -612,7 +514,7 @@ python3 scripts/skill_manager.py import-official-hub --agents menxia
 
 ## 📄 License
 
-[MIT](LICENSE) · 由 [OpenClaw](https://openclaw.ai) 社区构建
+[MIT](LICENSE) · 源自 OpenClaw 社区
 
 ---
 
