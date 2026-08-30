@@ -321,38 +321,15 @@ python3 dashboard/server.py   # 看板 UI → http://127.0.0.1:7891
 
 #### 启动
 
-```bash
-# 方式 1：一键启动（推荐）
-chmod +x start.sh && ./start.sh
+```powershell
+# Windows（推荐）：一键启动看板服务
+.\start.ps1                  # Ctrl+C 关闭；-Port 8080 指定端口
 
-# 方式 2：分别启动
-bash scripts/run_loop.sh &      # 数据刷新循环
-python3 dashboard/server.py     # 看板服务器
-
-# 打开浏览器
-open http://127.0.0.1:7891
+# 或直接启动（任何平台）
+python3 dashboard/server.py  # 看板 UI → http://127.0.0.1:7891
 ```
 
-<details>
-<summary><b>🖥️ 生产环境部署（systemd）</b></summary>
-
-```bash
-# 安装 systemd 服务
-sudo cp edict.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable edict
-sudo systemctl start edict
-
-# 或使用管理脚本
-bash edict.sh start    # 启动
-bash edict.sh status   # 查看状态
-bash edict.sh restart  # 重启
-bash edict.sh stop     # 停止
-```
-
-</details>
-
-> 💡 **看板即开即用**：`server.py` 内嵌 `dashboard/dashboard.html`，Docker 镜像包含预构建的 React 前端
+> 💡 **看板即开即用**：`server.py` 内嵌 `dashboard/dashboard.html`，读取 `data/` 下任务卡实时渲染
 
 > 💡 详细教程请看 [Getting Started 指南](docs/getting-started.md)
 
@@ -503,7 +480,7 @@ edict/
 │   └── screenshots/                   # 功能截图（11 张）
 ├── skills/                     # 通用技能包（harness 无关，核心）
 ├── agents/ →（已移除）          # 角色人格已并入 skills/*/references/
-├── start.sh                    # 一键启动（Dashboard + 数据刷新）
+├── start.ps1                   # 一键启动（Windows，Dashboard）
 ├── CONTRIBUTING.md             # 贡献指南
 └── LICENSE                     # MIT License
 ```
@@ -621,7 +598,7 @@ curl http://localhost:7891/api/remote-skills-list
 | **DAG 编排器** | Orchestrator 基于 DAG 的任务分解与依赖解析 |
 | **Agent 思考可视** | 实时展示 Agent 的 thinking 过程、工具调用、返回结果 |
 | **通用技能包** | `skills/` 拷到任何 agent 技能目录即可用（无平台/仓库硬依赖） |
-| **看板启动** | `start.sh` / `python3 dashboard/server.py` 一条命令 |
+| **看板启动** | `.\start.ps1`（Windows 一键）/ `python3 dashboard/server.py` |
 | **15 秒同步** | 数据自动刷新，看板倒计时显示 |
 | **Dashboard 鉴权** | `auth.py` 提供看板登录认证 |
 | **每日仪式** | 首次打开播放上朝开场动画 |
