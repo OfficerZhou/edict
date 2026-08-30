@@ -280,6 +280,26 @@ docker run --platform linux/amd64 -p 7891:7891 cft0808/sansheng-demo
 
 三省六部不做任何 agent 平台的私生子：**`skills/` 是自足的通用技能包**（Agent Skills 标准，`SKILL.md` + 动作语言——技能正文不写平台工具名），每个角色的完整 prompt 与人格增强都内嵌在技能内；拷走 `skills/` 一个目录，任何支持技能目录约定的 agent 都能跑完整流程（分拣→规划→审核→派发→执行→回奏），无任何平台/仓库硬依赖。
 
+#### 🧰 一键安装到当前 agent（推荐）
+
+任意 agent 克隆本仓库后，运行根目录安装器即可自动把 8 个技能装到它所在平台的技能目录（自动检测 Claude Code / Codex CLI / DeepSeek Harness，也可 `--target` 指定）：
+
+```bash
+git clone git@github.com:OfficerZhou/edict.git && cd edict
+./install-skills.sh              # 复制安装（新会话立即生效）
+./install-skills.sh --link      # 符号链接安装，仓库更新自动跟随
+./install-skills.sh --dry-run   # 只看计划不写入
+```
+
+Windows PowerShell：
+
+```powershell
+.\install-skills.ps1            # 复制安装
+.\install-skills.ps1 -Link      # 目录联接（免管理员），跟随仓库更新
+```
+
+装好后开新会话，说「朕要一个 React 待办应用，六部协同办理」验证触发。各平台技能目录的手工位置见 `docs/porting-edict-to-a-harness.md` Part 1。
+
 通用层的三件事（详见 `docs/porting-edict-to-a-harness.md`）：
 
 1. **技能内容**：`skills/*/SKILL.md` 全平台共用，正文只写动作（"派一个全新上下文的子代理"、"更新任务卡"），可降级能力（无子代理/无 shell）的兜底文案内嵌
