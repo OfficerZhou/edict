@@ -37,7 +37,7 @@ cd edict
 git checkout -b feat/my-awesome-feature
 
 # 4. 开发 & 测试
-python3 dashboard/server.py  # 启动看板验证
+python board/server.py  # 启动看板验证
 
 # 5. 提交
 git add .
@@ -63,25 +63,25 @@ git push origin feat/my-awesome-feature
 ./install.sh
 
 # 启动数据刷新（后台运行）
-bash scripts/run_loop.sh &
+python board/server.py &
 
 # 启动看板服务器
-python3 dashboard/server.py
+python board/server.py
 
 # 打开浏览器
 open http://127.0.0.1:7891
 ```
 
-> 💡 **看板开箱即用**：`server.py` 内嵌 `dashboard/dashboard.html`，Docker 镜像包含预构建 React 前端
+> 💡 **看板开箱即用**：`server.py` 内嵌 `board/board.html`，Docker 镜像包含预构建 React 前端
 
 ### 项目结构速览
 
 | 目录/文件 | 说明 | 改动频率 |
 |----------|------|--------|
-| `dashboard/dashboard.html` | 看板前端（单文件，零依赖，开箱即用） | 🔥 高 |
-| `dashboard/server.py` | API 服务器（stdlib，~2200 行） | 🔥 高 |
+| `board/board.html` | 看板前端（单文件，零依赖，开箱即用） | 🔥 高 |
+| `board/server.py` | API 服务器（stdlib，~2200 行） | 🔥 高 |
 | `agents/*/SOUL.md` | 12 个 Agent 人格模板 | 🔶 中 |
-| `dashboard/court_discuss.py` | 朝堂议政引擎（多官员 LLM 讨论） | 🔶 中 |
+| （已随旧看板移除） | 朝堂议政引擎（多官员 LLM 讨论） | 🔶 中 |
 | `scripts/kanban_update.py` | 看板 CLI + 数据清洗 + 状态机校验（~350 行） | 🔶 中 |
 | `scripts/*.py` | 数据同步 / 自动化脚本 | 🔶 中 |
 | `tests/test_e2e_kanban.py` | E2E 看板测试（24 断言） | 🔶 中 |
@@ -106,7 +106,7 @@ open http://127.0.0.1:7891
 2. 也可以在 Issue 中自荐，说明你的贡献记录
 3. 所有晋升决定公开透明
 
-> **核心路径**（需 Maintainer review）：`dashboard/server.py`、`agents/`、`edict/backend/`、`scripts/`、`data/`
+> **核心路径**（需 Maintainer review）：`board/server.py`、`agents/`、`edict/backend/`、`scripts/`、`data/`
 >
 > **开放路径**（Committer 可自主 merge）：`docs/`、`examples/`、`README*.md`、UI 样式调整
 
@@ -176,18 +176,18 @@ docs: 更新 README 截图
 
 ```bash
 # 编译检查
-python3 -m py_compile dashboard/server.py
+python3 -m py_compile board/server.py
 python3 -m py_compile scripts/kanban_update.py
 
 # E2E 看板测试（9 场景 17 断言）
 python3 tests/test_e2e_kanban.py
 
 # 验证数据同步
-python3 scripts/refresh_live_data.py
+python board/server.py
 python3 scripts/sync_agent_config.py
 
 # 启动服务器验证 API
-python3 dashboard/server.py &
+python board/server.py &
 curl -s http://localhost:7891/api/live-status | python3 -m json.tool | head -20
 ```
 

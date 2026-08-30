@@ -310,28 +310,25 @@ Windows PowerShell：
 >
 > 验收标准（任何平台）：干净会话中说「朕要一个 React 待办应用，六部协同办理」，agent 必须先触发 `edict-triaging`（建任务卡、转中书省），之后才许写代码。
 
-#### 看板服务（可选配套）
+#### 军机处看板（可选配套）
 
-`scripts/` + `dashboard/` + `data/` 是看板与审计的配套服务（stdlib Python，文件驱动），启动：
+`board/`（单文件网页 + 零依赖 stdlib API）+ `scripts/kanban_update.py` 是看板配套服务：agent 用 CLI 写卡，看板直接读 `data/` 实时渲染，无数据库、无刷新循环：
 
 ```bash
-python3 dashboard/server.py   # 看板 UI → http://127.0.0.1:7891
+python board/server.py   # 看板 UI → http://127.0.0.1:7891
 ```
-
 
 #### 启动
 
 ```powershell
-# Windows（推荐）：一键启动看板服务
+# Windows（推荐）：一键启动军机处看板
 .\start.ps1                  # Ctrl+C 关闭；-Port 8080 指定端口
 
 # 或直接启动（任何平台）
-python3 dashboard/server.py  # 看板 UI → http://127.0.0.1:7891
+python board/server.py       # 看板 UI → http://127.0.0.1:7891
 ```
 
-> 💡 **看板即开即用**：`server.py` 内嵌 `dashboard/dashboard.html`，读取 `data/` 下任务卡实时渲染
-
-> 💡 详细教程请看 [Getting Started 指南](docs/getting-started.md)
+> 💡 **看板即开即用**：`board/board.html` 单文件前端（深浅色自适应），读取 `data/` 下任务卡实时渲染，点卡片看完整流转时间线 + 审计
 
 ---
 
@@ -421,63 +418,37 @@ python3 dashboard/server.py  # 看板 UI → http://127.0.0.1:7891
 
 ```
 edict/
-├── agents/                     # 12 个 Agent 的人格模板
-│   ├── taizi/SOUL.md           # 太子 · 消息分拣（含旨意标题规范）
-│   ├── zhongshu/SOUL.md        # 中书省 · 规划中枢
-│   ├── menxia/SOUL.md          # 门下省 · 审议把关
-│   ├── shangshu/SOUL.md        # 尚书省 · 调度大脑
-│   ├── hubu/SOUL.md            # 户部 · 数据资源
-│   ├── libu/SOUL.md            # 礼部 · 文档规范
-│   ├── bingbu/SOUL.md          # 兵部 · 工程实现
-│   ├── xingbu/SOUL.md          # 刑部 · 合规审计
-│   ├── gongbu/SOUL.md          # 工部 · 基础设施
-│   ├── libu_hr/                # 吏部 · 人事管理
-│   └── zaochao/SOUL.md         # 早朝官 · 情报枢纽
-├── dashboard/
-│   ├── dashboard.html          # 军机处看板（单文件 · 零依赖 · ~2500 行）
-│   ├── dist/                   # React 前端构建产物（Docker 镜像内包含，本地可选）
-│   ├── auth.py                 # Dashboard 登录鉴权
-│   ├── court_discuss.py        # 朝堂议政（多官员 LLM 讨论引擎）
-│   └── server.py               # API 服务器（Python 标准库 · 零依赖 · ~2300 行）
-├── edict/backend/              # 异步后端服务（SQLAlchemy + Redis）
-│   ├── app/models/
-│   │   ├── task.py             # 任务模型 + 状态机
-│   │   ├── audit.py            # 审计日志模型
-│   │   └── outbox.py           # Outbox 消息模型
-│   ├── app/services/
-│   │   ├── event_bus.py        # Redis Streams EventBus
-│   │   └── task_service.py     # 任务服务层
-│   └── app/workers/
-│       ├── dispatch_worker.py  # 并行调度 + 重试 + 资源锁
-│       ├── orchestrator_worker.py  # DAG 编排器
-│       └── outbox_relay.py     # 事务性 Outbox Relay
-├── agents/
-│   ├── <agent_id>/SOUL.md      # 各省部 Agent 人格模板
-│   ├── GLOBAL.md               # 全局 Agent 配置
-│   └── groups/                 # Agent 分组（sansheng / liubu）
+├── skills/                     # 通用技能包（harness 无关，核心）
+│   ├── using-edict/            # 总纲：技能目录/铁律/降级 + 平台工具映射
+│   ├── edict-triaging/         # 太子 · 分拣（角色 prompt 内嵌）
+│   ├── edict-planning/         # 中书省 · 规划
+│   ├── edict-review/           # 门下省 · 审核封驳
+│   ├── edict-dispatch/         # 尚书省 · 派发
+│   ├── edict-ministries/       # 六部 · 执行（references/depts 含各部人格）
+│   ├── edict-report/           # 回奏
+│   └── edict-kanban/           # 看板操作手册（状态机/权限矩阵）
+├── board/
+│   ├── board.html              # 军机处看板（单文件 · 零依赖）
+│   └── server.py               # 看板 API（Python 标准库 · 零依赖）
 ├── scripts/
-│   ├── run_loop.sh             # 数据刷新循环（每 15 秒）
-│   ├── kanban_update.py        # 看板 CLI（含旨意数据清洗 + 标题校验 + 状态机）
-│   ├── skill_manager.py        # Skill 管理工具（远程/本地 Skills 添加、更新、移除）
-│   ├── agentrec_advisor.py     # Agent 模型推荐（功过簿 + 成本优化）
-│   ├── linucb_router.py        # LinUCB 智能路由
-│   ├── refresh_watcher.py      # 数据变更监听
-│   ├── sync_from_openclaw_runtime.py
-│   ├── sync_agent_config.py
-│   ├── sync_officials_stats.py
-│   ├── fetch_morning_news.py
-│   ├── refresh_live_data.py
-│   ├── apply_model_changes.py
-│   └── file_lock.py            # 文件锁（防多 Agent 并发写入）
+│   ├── kanban_update.py        # 看板 CLI（状态机校验/权限/审计 — agent 写卡唯一入口）
+│   ├── file_lock.py            # 文件锁（防多 Agent 并发写入）
+│   └── utils.py                # 公共工具
+├── edict/backend/              # 事件驱动后端（SQLAlchemy + Redis）
+│   ├── app/models/             #   task.py 状态机 / audit / outbox
+│   ├── app/services/           #   event_bus / task_service
+│   └── app/workers/            #   dispatch / orchestrator / outbox_relay
 ├── tests/
+│   ├── test_kanban.py          # 看板 CLI 单元测试
 │   ├── test_e2e_kanban.py      # 端到端测试（17 个断言）
-│   └── test_state_machine_consistency.py  # 状态机一致性测试
+│   ├── test_state_machine_consistency.py  # 状态机一致性测试
+│   └── test_skills_metadata.py # 技能元数据/中性词汇 lint
 ├── data/                       # 运行时数据（gitignored）
 ├── docs/
-│   ├── task-dispatch-architecture.md  # 📚 详细架构文档：任务分发、流转、调度的完整设计（业务+技术）
-│   ├── getting-started.md             # 快速上手指南
-│   ├── wechat-article.md              # 微信文章
-│   └── screenshots/                   # 功能截图（11 张）
+│   ├── porting-edict-to-a-harness.md    # 📚 移植指南：接入任何 agent 平台
+│   ├── task-dispatch-architecture.md    # 架构文档：任务分发、流转、调度的完整设计
+│   ├── wechat-article.md                # 微信文章
+│   └── screenshots/                     # 功能截图
 ├── skills/                     # 通用技能包（harness 无关，核心）
 ├── agents/ →（已移除）          # 角色人格已并入 skills/*/references/
 ├── start.ps1                   # 一键启动（Windows，Dashboard）
@@ -598,9 +569,8 @@ curl http://localhost:7891/api/remote-skills-list
 | **DAG 编排器** | Orchestrator 基于 DAG 的任务分解与依赖解析 |
 | **Agent 思考可视** | 实时展示 Agent 的 thinking 过程、工具调用、返回结果 |
 | **通用技能包** | `skills/` 拷到任何 agent 技能目录即可用（无平台/仓库硬依赖） |
-| **看板启动** | `.\start.ps1`（Windows 一键）/ `python3 dashboard/server.py` |
-| **15 秒同步** | 数据自动刷新，看板倒计时显示 |
-| **Dashboard 鉴权** | `auth.py` 提供看板登录认证 |
+| **看板启动** | `.\start.ps1`（Windows 一键）/ `python board/server.py` |
+| **实时刷新** | 看板每 5 秒自动拉取任务卡（页面内开关可关） |
 | **每日仪式** | 首次打开播放上朝开场动画 |
 | **远程 Skills 生态** | 从 GitHub/URL 一键导入能力，支持版本管理 + CLI + API + UI |
 

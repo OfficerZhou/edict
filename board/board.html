@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>军机处 · 任务看板</title>
+<style>
+:root {
+  --bg:#f6f3ec; --panel:#fffdf7; --ink:#2b2417; --sub:#8a7f68; --line:#e5ddc9;
+  --col:#7a6a3f; --accent:#8B5CF6; --ok:#2f9e5f; --warn:#d9822b; --err:#c0392b;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#16141d; --panel:#1f1c2b; --ink:#e8e4f2; --sub:#9b93ae; --line:#322d43; --col:#a99c74; }
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+body { background:var(--bg); color:var(--ink); font:14px/1.5 "Microsoft YaHei",system-ui,sans-serif; padding:16px 20px 60px; }
+header { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+h1 { font-size:20px; letter-spacing:1px; }
+.stats { display:flex; gap:10px; font-size:12px; color:var(--sub); align-items:center; }
+.stats b { color:var(--ink); }
+button { background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:4px 12px; cursor:pointer; font-size:12px; }
+button:hover { border-color:var(--accent); }
+.board { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px; }
+.column { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:10px; min-height:120px; }
+.column h2 { font-size:13px; color:var(--col); display:flex; justify-content:space-between; margin-bottom:8px; }
+.column h2 .cnt { font-size:11px; }
+.card { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin-bottom:8px; cursor:pointer; }
+.card:hover { border-color:var(--accent); }
+.card .title { font-size:13px; font-weight:600; margin-bottom:3px; }
+.card .meta { font-size:11px; color:var(--sub); display:flex; justify-content:space-between; }
+.card .now { font-size:11px; color:var(--sub); margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.card .todo { font-size:11px; color:var(--ok); margin-top:2px; }
+.card.blocked { border-color:var(--err); }
+.card.blocked .now { color:var(--err); }
+#drawer { position:fixed; right:0; top:0; bottom:0; width:min(520px,100%); background:var(--panel); border-left:1px solid var(--line); box-shadow:-6px 0 24px rgba(0,0,0,.12); padding:20px; overflow-y:auto; transform:translateX(100%); transition:transform .2s; }
+#drawer.open { transform:translateX(0); }
+#drawer h2 { font-size:16px; margin-bottom:4px; }
+#drawer .sub { color:var(--sub); font-size:12px; margin-bottom:12px; }
+.tl { border-left:2px solid var(--line); margin-left:6px; padding-left:14px; }
+.tl .item { position:relative; margin-bottom:10px; font-size:12px; }
+.tl .item::before { content:''; position:absolute; left:-19px; top:4px; width:8px; height:8px; border-radius:50%; background:var(--accent); }
+.tl .item .from { color:var(--col); font-weight:600; }
+.tl .item .at { color:var(--sub); font-size:11px; }
+.prog { font-size:12px; color:var(--sub); margin-bottom:2px; }
+.audit { font-size:11px; color:var(--sub); border-top:1px dashed var(--line); margin-top:10px; padding-top:8px; }
+.muted { color:var(--sub); font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏛️ 军机处 · 任务看板</h1>
+  <div class="stats">
+    <span>总数 <b id="s-total">0</b></span>
+    <span>进行中 <b id="s-active">0</b></span>
+    <span>已完成 <b id="s-done">0</b></span>
+    <span>阻塞 <b id="s-blocked">0</b></span>
+    <span id="updatedAt" class="muted"></span>
+  </div>
+  <button id="btn-refresh">刷新</button>
+  <label class="muted"><input type="checkbox" id="auto" checked> 自动刷新(5s)</label>
+</header>
+<div class="board" id="board"></div>
+
+<div id="drawer"><div id="drawer-body"></div></div>
+
+<script>
+const COLUMNS = [
+  ['待分拣', ['Pending','Taizi']],
+  ['规划中', ['Zhongshu']],
+  ['审核中', ['Menxia']],
+  ['派发中', ['Assigned','Next']],
+  ['执行中', ['Doing']],
+  ['复核/确认', ['Review','PendingConfirm']],
+  ['已完成', ['Done']],
+  ['阻塞/取消', ['Blocked','Cancelled']],
+];
+const STATE_NAME = Object.fromEntries(COLUMNS.flatMap(([n, ss]) => ss.map(s => [s, n])));
+let board = { tasks: [], audit: [] };
+
+async function load() {
+  try {
+    const r = await fetch('/api/board');
+    board = await r.json();
+  } catch (e) { return; }
+  render();
+}
+
+function fmtTime(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60) return '刚刚';
+  if (diff < 3600) return Math.floor(diff / 60) + ' 分钟前';
+  if (diff < 86400) return Math.floor(diff / 3600) + ' 小时前';
+  return d.toLocaleDateString('zh-CN') + ' ' + d.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+}
+
+function render() {
+  const tasks = board.tasks || [];
+  document.getElementById('s-total').textContent = tasks.length;
+  const done = tasks.filter(t => t.state === 'Done').length;
+  const blocked = tasks.filter(t => t.state === 'Blocked').length;
+  document.getElementById('s-active').textContent = tasks.length - done;
+  document.getElementById('s-done').textContent = done;
+  document.getElementById('s-blocked').textContent = blocked;
+  document.getElementById('updatedAt').textContent = '更新于 ' + fmtTime(board.generatedAt);
+
+  const box = document.getElementById('board');
+  box.innerHTML = '';
+  for (const [name, states] of COLUMNS) {
+    const col = document.createElement('div');
+    col.className = 'column';
+    const cards = tasks.filter(t => states.includes(t.state)).sort((a,b) => (b.updatedAt||'').localeCompare(a.updatedAt||''));
+    col.innerHTML = `<h2>${name} <span class="cnt">${cards.length}</span></h2>`;
+    for (const t of cards) col.appendChild(makeCard(t));
+    box.appendChild(col);
+  }
+}
+
+function makeCard(t) {
+  const el = document.createElement('div');
+  el.className = 'card' + (t.state === 'Blocked' ? ' blocked' : '');
+  const todos = (t.todos || []).filter(x => x.status === 'completed').length + '/' + (t.todos || []).length;
+  el.innerHTML = `
+    <div class="title">${esc(t.title || t.id)}</div>
+    <div class="meta"><span>${esc(t.org||'')} · ${esc(t.official||'')}</span><span>${esc(t.id||'')}</span></div>
+    <div class="now">📡 ${esc(t.now || t.block || '')}</div>
+    ${(t.todos||[]).length ? `<div class="todo">☑ 子任务 ${todos}</div>` : ''}`;
+  el.onclick = () => openCard(t.id);
+  return el;
+}
+
+function openCard(id) {
+  const t = (board.tasks || []).find(x => x.id === id);
+  if (!t) return;
+  const audits = (board.audit || []).filter(a => a.task === id);
+  const flows = (t.flow_log || []).slice().reverse();
+  const prog = (t.progress_log || []).slice(-8).reverse();
+  const body = document.getElementById('drawer-body');
+  body.innerHTML = `
+    <h2>${esc(t.title || id)}</h2>
+    <div class="sub">${esc(id)} · ${esc(t.org||'')}·${esc(t.official||'')} · 状态 <b>${STATE_NAME[t.state]||esc(t.state)}</b>（${esc(t.state)}）<br>更新于 ${fmtTime(t.updatedAt)}</div>
+    <div class="prog"><b>当前动态：</b>${esc(t.now || t.block || '—')}</div>
+    ${
+      prog.map(p => `<div class="prog">${fmtTime(p.at)} · ${esc(p.now||'')}${p.plan ? '<br>计划：' + esc(p.plan) : ''}</div>`).join('')
+    }
+    ${
+      (t.todos||[]).length ? `<div class="prog"><b>子任务：</b>${t.todos.map(x => `${esc(x.status==='completed'?'✅':'🔄')} ${esc(x.title||'')}${x.detail?'（'+esc(x.detail)+'）':''}`).join('　')}</div>` : ''
+    }
+    <h3 style="margin:14px 0 8px;font-size:14px">📜 流转时间线（${flows.length}）</h3>
+    <div class="tl">${
+      flows.map(f => `<div class="item"><span class="from">${esc(f.from||'')} → ${esc(f.to||'')}</span> <span class="at">${fmtTime(f.at)}</span><br>${esc(f.remark||'')}</div>`).join('') || '<div class="muted">暂无流转</div>'
+    }</div>
+    ${
+      audits.length ? `<div class="audit"><b>审计（${audits.length}）</b><br>${audits.slice().reverse().map(a => `${fmtTime(a.ts)} ${esc(a.agent||'')} ${esc(a.action||'')} → ${esc(a.to??a.new_val??'')}（${esc(a.reason||'')}）`).join('<br>')}</div>` : ''
+    }
+    <div style="margin-top:16px"><button onclick="closeCard()">关闭</button></div>`;
+  document.getElementById('drawer').classList.add('open');
+}
+function closeCard() { document.getElementById('drawer').classList.remove('open'); }
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+document.getElementById('btn-refresh').onclick = load;
+setInterval(() => { if (document.getElementById('auto').checked) load(); }, 5000);
+document.getElementById('drawer').addEventListener('click', e => { if (e.target === e.currentTarget) closeCard(); });
+load();
+</script>
+</body>
+</html>

@@ -100,7 +100,7 @@ python3 scripts/kanban_update.py delegate-result <id> <result>
 
 ## 看板界面
 
-- 本地看板 UI：`http://127.0.0.1:7891`（`python3 dashboard/server.py` 启动，读取仓库 `data/`）
+- 本地看板 UI：`http://127.0.0.1:7891`（`python board/server.py` 启动，读取仓库 `data/` 实时渲染）
 
 ## 降级
 

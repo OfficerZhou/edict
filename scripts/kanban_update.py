@@ -121,8 +121,8 @@ def _trigger_refresh():
     except Exception:
         pass
     # Fallback: 如果信号文件 3 秒后仍存在（watcher 没在运行），直接 fork
-    # 注意：这个 fallback 只在非 watcher 部署场景触发
-    if not (_BASE / 'data' / '.refresh_watcher_pid').exists():
+    # 注意：这个 fallback 只在非 watcher 部署场景触发；刷新脚本已随旧看板移除时跳过
+    if REFRESH_SCRIPT.exists() and not (_BASE / 'data' / '.refresh_watcher_pid').exists():
         try:
             subprocess.Popen([python_bin(), str(REFRESH_SCRIPT)],
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
