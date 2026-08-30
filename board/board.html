@@ -165,7 +165,12 @@ function esc(s) {
 
 document.getElementById('btn-refresh').onclick = load;
 setInterval(() => { if (document.getElementById('auto').checked) load(); }, 5000);
+// 点抽屉内部空白/关闭按钮关闭；点抽屉外任意空白处（页面背景/看板列）也关闭
 document.getElementById('drawer').addEventListener('click', e => { if (e.target === e.currentTarget) closeCard(); });
+document.addEventListener('click', e => {
+  const drawer = document.getElementById('drawer');
+  if (drawer.classList.contains('open') && !drawer.contains(e.target)) closeCard();
+});
 load();
 </script>
 </body>

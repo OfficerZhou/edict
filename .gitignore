@@ -50,3 +50,5 @@ _*.py
 # Generated docs
 *.docx
 *.pdf
+
+output/
