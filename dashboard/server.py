@@ -25,7 +25,7 @@ from auth import init as auth_init, requires_auth, extract_token, verify_token, 
 scripts_dir = str(pathlib.Path(__file__).parent.parent / 'scripts')
 sys.path.insert(0, scripts_dir)
 from file_lock import atomic_json_read, atomic_json_write, atomic_json_update
-from utils import validate_url, read_json, now_iso, python_bin
+from utils import validate_url, read_json, now_iso, python_bin, get_openclaw_home
 from court_discuss import (
     create_session as cd_create, advance_discussion as cd_advance,
     get_session as cd_get, conclude_session as cd_conclude,
@@ -41,7 +41,9 @@ if str(CHANNELS_DIR.parent) not in sys.path:
     sys.path.insert(0, str(CHANNELS_DIR.parent))
 from channels import get_channel, get_channel_info, CHANNELS as NOTIFICATION_CHANNELS
 
-OCLAW_HOME = pathlib.Path.home() / '.openclaw'
+OCLAW_HOME = get_openclaw_home()  # 尊重 OPENCLAW_HOME 环境变量（无 env 时 ~/.openclaw，行为与旧版一致）
+# OpenClaw 集成开关：无 openclaw.json 时说明本机未装 OpenClaw，相关能力（网关探测/会话读取/模型同步）自动降级
+OPENCLAW_PRESENT = (OCLAW_HOME / 'openclaw.json').exists()
 MAX_REQUEST_BODY = 1 * 1024 * 1024  # 1 MB
 ALLOWED_ORIGIN = None  # Set via --cors; None means restrict to localhost
 _DASHBOARD_PORT = 7891  # Updated at startup from --port arg
@@ -813,7 +815,10 @@ def _check_gateway_alive():
     """检测 Gateway 是否在运行。
 
     Windows 上不要依赖 pgrep；优先通过本地端口探测判断。
+    未安装 OpenClaw（无 openclaw.json）时直接返回 False，避免无谓的端口探测等待。
     """
+    if not OPENCLAW_PRESENT:
+        return False
     if _check_gateway_probe():
         return True
     try:
@@ -2414,7 +2419,8 @@ class Handler(BaseHTTPRequestHandler):
             task_data_dir = get_task_data_dir()
             checks = {'dataDir': task_data_dir.is_dir(), 'tasksReadable': (task_data_dir / 'tasks_source.json').exists()}
             checks['dataWritable'] = os.access(str(task_data_dir), os.W_OK)
-            all_ok = all(checks.values())
+            checks['openclawInstalled'] = OPENCLAW_PRESENT
+            all_ok = all(v for k, v in checks.items() if k != 'openclawInstalled')
             self.send_json({'status': 'ok' if all_ok else 'degraded', 'ts': now_iso(), 'checks': checks})
         elif p == '/api/live-status':
             task_data_dir = get_task_data_dir()

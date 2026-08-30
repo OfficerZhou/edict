@@ -21,6 +21,19 @@ import uuid
 
 logger = logging.getLogger('court_discuss')
 
+# scripts/utils.get_openclaw_home 尊重 OPENCLAW_HOME 环境变量；无 env 时回退 ~/.openclaw（与旧版行为一致）
+try:
+    from utils import get_openclaw_home  # type: ignore
+except ImportError:
+    import sys as _sys
+    import pathlib as _pl
+    _scripts = str(_pl.Path(__file__).resolve().parent.parent / 'scripts')
+    if _scripts not in _sys.path:
+        _sys.path.insert(0, _scripts)
+    from utils import get_openclaw_home  # type: ignore
+
+_OCLAW_HOME = get_openclaw_home()
+
 # ── 官员角色设定 ──
 
 OFFICIAL_PROFILES = {
@@ -300,7 +313,7 @@ def _pick_chat_model(models: list[dict]) -> str | None:
 
 def _read_copilot_token() -> str | None:
     """读取 openclaw 管理的 GitHub Copilot token。"""
-    token_path = os.path.expanduser('~/.openclaw/credentials/github-copilot.token.json')
+    token_path = str(_OCLAW_HOME / 'credentials' / 'github-copilot.token.json')
     if not os.path.exists(token_path):
         return None
     try:
@@ -347,8 +360,8 @@ def _get_llm_config() -> dict | None:
             'api_type': 'github-copilot',
         }
 
-    # 3. 从 ~/.openclaw/openclaw.json 读取其他 provider 配置
-    openclaw_cfg = os.path.expanduser('~/.openclaw/openclaw.json')
+    # 3. 从 openclaw 配置读取其他 provider 配置（OpenClaw 未安装时返回默认降级配置）
+    openclaw_cfg = str(_OCLAW_HOME / 'openclaw.json')
     if not os.path.exists(openclaw_cfg):
         return None
 

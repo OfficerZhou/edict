@@ -20,7 +20,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/OpenClaw-Required-blue?style=flat-square" alt="OpenClaw">
+  <img src="https://img.shields.io/badge/Harness-Agnostic-8B5CF6?style=flat-square" alt="Any Harness">
   <img src="https://img.shields.io/badge/Python-3.9+-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python">
   <img src="https://img.shields.io/badge/Agents-12_Specialized-8B5CF6?style=flat-square" alt="Agents">
   <img src="https://img.shields.io/badge/Dashboard-Real--time-F59E0B?style=flat-square" alt="Dashboard">
@@ -272,41 +272,32 @@ exec /usr/local/bin/python3: exec format error
 ```bash
 docker run --platform linux/amd64 -p 7891:7891 cft0808/sansheng-demo
 ```
-
-或使用 docker-compose（已内置 `platform: linux/amd64`）：
-```bash
-docker compose up
-```
+（Demo 镜像已发布，不依赖本仓库源码）
 
 </details>
 
-### 完整安装
+### 🧩 通用技能包（Harness 无关）
 
-#### 前置条件
-- [OpenClaw](https://openclaw.ai) 已安装
-- Python 3.10+
-- macOS / Linux
+三省六部不做任何 agent 平台的私生子：**`skills/` 是自足的通用技能包**（Agent Skills 标准，`SKILL.md` + 动作语言——技能正文不写平台工具名），每个角色的完整 prompt 与人格增强都内嵌在技能内；拷走 `skills/` 一个目录，任何支持技能目录约定的 agent 都能跑完整流程（分拣→规划→审核→派发→执行→回奏），无任何平台/仓库硬依赖。
 
-#### 安装
+通用层的三件事（详见 `docs/porting-edict-to-a-harness.md`）：
+
+1. **技能内容**：`skills/*/SKILL.md` 全平台共用，正文只写动作（"派一个全新上下文的子代理"、"更新任务卡"），可降级能力（无子代理/无 shell）的兜底文案内嵌
+2. **工具映射**：`skills/using-edict/references/<harness>-tools.md` 把动作翻译成该平台真实工具
+3. **bootstrap**：会话启动时把 `skills/using-edict/SKILL.md` 注入上下文（平台自己的机制：钩子/上下文文件/插件）——没有它技能"躺着没被调用"，所以各平台打包时补这一层即可
+
+> 本仓库**不含任何平台接入文件**（曾有的 `.claude-plugin/`、`hooks/`、`.codex-plugin/`、`dsh-plugin/`、`AGENTS.md` 等平台层与 OpenClaw 部署件均已移除，按需恢复或按移植指南重打包——备份：`claude` 会话记录中的 `edict-deleted-20260830.tar.gz`）。
+>
+> 验收标准（任何平台）：干净会话中说「朕要一个 React 待办应用，六部协同办理」，agent 必须先触发 `edict-triaging`（建任务卡、转中书省），之后才许写代码。
+
+#### 看板服务（可选配套）
+
+`scripts/` + `dashboard/` + `data/` 是看板与审计的配套服务（stdlib Python，文件驱动），启动：
 
 ```bash
-git clone https://github.com/cft0808/edict.git
-cd edict
-chmod +x install.sh && ./install.sh
+python3 dashboard/server.py   # 看板 UI → http://127.0.0.1:7891
 ```
 
-安装脚本自动完成：
-- ✅ 创建全量 Agent Workspace（含太子/吏部/早朝，兼容历史 main）
-- ✅ 写入各省部 SOUL.md（角色人格 + 工作流规则 + 数据清洗规范）
-- ✅ 注册 Agent 及权限矩阵到 `openclaw.json`
-- ✅ **符号链接统一数据**（各 Workspace 的 data/scripts → 项目目录，确保数据一致）
-- ✅ **设置 Agent 间通信可见性**（`sessions.visibility all`，解决消息不可达问题）
-- ✅ **同步 API Key 到所有 Agent**（自动从已配置的 Agent 复制）
-- ✅ 构建 React 前端（需 Node.js 18+，如未安装则跳过）
-- ✅ 初始化数据目录 + 首次数据同步（含官员统计）
-- ✅ 重启 Gateway 使配置生效
-
-> ⚠️ **首次安装**：需先配置 API Key：`openclaw agents add taizi`，然后重新运行 `./install.sh` 同步到所有 Agent。
 
 #### 启动
 
@@ -490,10 +481,9 @@ edict/
 │   ├── getting-started.md             # 快速上手指南
 │   ├── wechat-article.md              # 微信文章
 │   └── screenshots/                   # 功能截图（11 张）
-├── install.sh                  # 一键安装脚本
+├── skills/                     # 通用技能包（harness 无关，核心）
+├── agents/ →（已移除）          # 角色人格已并入 skills/*/references/
 ├── start.sh                    # 一键启动（Dashboard + 数据刷新）
-├── edict.service               # systemd 服务配置（生产部署）
-├── edict.sh                    # 服务管理脚本（start/stop/restart/status）
 ├── CONTRIBUTING.md             # 贡献指南
 └── LICENSE                     # MIT License
 ```
@@ -610,8 +600,8 @@ curl http://localhost:7891/api/remote-skills-list
 | **并行调度引擎** | Dispatch Worker 支持并行执行、指数退避重试、资源锁 |
 | **DAG 编排器** | Orchestrator 基于 DAG 的任务分解与依赖解析 |
 | **Agent 思考可视** | 实时展示 Agent 的 thinking 过程、工具调用、返回结果 |
-| **一键安装 / 一键启动** | `install.sh` 自动配置，`start.sh` 一条命令启动全部服务 |
-| **systemd 生产部署** | `edict.service` 支持 systemd 守护进程，开机自启 |
+| **通用技能包** | `skills/` 拷到任何 agent 技能目录即可用（无平台/仓库硬依赖） |
+| **看板启动** | `start.sh` / `python3 dashboard/server.py` 一条命令 |
 | **15 秒同步** | 数据自动刷新，看板倒计时显示 |
 | **Dashboard 鉴权** | `auth.py` 提供看板登录认证 |
 | **每日仪式** | 首次打开播放上朝开场动画 |
@@ -694,7 +684,7 @@ curl -X POST http://127.0.0.1:7891/api/scheduler-scan \
 # 方法 1：指定平台
 docker run --platform linux/amd64 -p 7891:7891 cft0808/sansheng-demo
 
-# 方法 2：使用 docker-compose（已内置 platform）
+# 方法 2：docker compose（已内置 platform，需自备 compose 文件）
 docker compose up
 ```
 
